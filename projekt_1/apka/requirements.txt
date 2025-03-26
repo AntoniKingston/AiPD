@@ -1,0 +1,9 @@
+cffi==1.17.1
+numpy==2.2.4
+pycparser==2.22
+PyQt6==6.8.1
+PyQt6-Qt6==6.8.2
+PyQt6_sip==13.10.0
+pyqtgraph==0.13.7
+scipy==1.15.2
+sounddevice==0.5.1
