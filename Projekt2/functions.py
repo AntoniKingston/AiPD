@@ -106,8 +106,8 @@ def plot_spectrogram(fig, sr, signal, overlap=0.5, min_frame_dur = 0.2, window =
     # Set custom tick labels
     ax.set_xticks(np.linspace(0, num_frames, 10))
     ax.set_xticklabels([f"{t:.2f}s" for t in np.linspace(0, total_duration, 10)])
-    ax.set_yticks(np.linspace(0, num_freqs, 10))
-    ax.set_yticklabels([f"{f:.0f}Hz" for f in np.linspace(max_freq, 0, 10)])
+    ax.set_yticks(np.linspace(0, num_freqs, 5))
+    ax.set_yticklabels([f"{f:.0f}Hz" for f in np.linspace(max_freq, 0, 5)])
 
     fig.tight_layout()
     # plt.xlabel("Time frame")
@@ -227,6 +227,23 @@ def effective_bandwidth(fft, frequencies):
     to_sum_up = (frequencies - fc)**2 * fft**2
     up = sum(to_sum_up)
     return up/den
+#function above it will filter fft to desired frequencies
+def ESRB(N, fft, vol):
+    den = N
+    be = np.sum(fft**2)/den
+    return be/vol
+def SFM(fft):
+    N = len(fft)
+    return np.prod(fft**2)**(1/N)*N/np.sum(fft**2)
+
+def SCF(fft, N):
+    N = len(fft)
+    return np.max(fft**2)*N/np.sum(fft**2)
+def vol(fft):
+    np.mean(fft**2)
+
+
+
 
 
 if __name__ == '__main__':

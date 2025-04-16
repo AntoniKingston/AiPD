@@ -11,6 +11,7 @@ from matplotlib.figure import Figure
 import seaborn as sns
 from scipy.io import wavfile  # For WAV file loading
 import os.path  # For file path validation
+from matplotlib.widgets import SpanSelector
 
 # Import functions from separate file
 from functions import *
@@ -23,14 +24,18 @@ class AudioAnalyzerApp(QMainWindow):
         self.setGeometry(100, 100, 1200, 800)
 
         self.audio_data = None
-        self.selected_region = None
+        self.selected_region = None  # Will store (start_index, end_index) of selection
         self.sample_rate = None
-        self.file_path = None  # Store the current file path
+        self.file_path = None
+
+        # Add span selector objects
+        self.time_domain_span_selector = None
+        self.window_function_span_selector = None
 
         # Default spectrogram parameters
         self.spec_window = 'rectangular'
-        self.spec_frame_dur = 0.05  # Default value in seconds
-        self.spec_overlap = 0.5  # Default overlap value
+        self.spec_frame_dur = 0.05
+        self.spec_overlap = 0.5
         self.max_spec_freq = 2000
 
         self.init_ui()
@@ -66,6 +71,8 @@ class AudioAnalyzerApp(QMainWindow):
         self.setup_tab3()
         self.setup_tab4()
         self.setup_tab5()
+
+        self.tabs.currentChanged.connect(self.handle_tab_changed)
 
         # Add status bar
         self.statusBar().showMessage('Ready')
@@ -166,40 +173,189 @@ class AudioAnalyzerApp(QMainWindow):
         self.time_domain_subsection_figure = subsection_figure
         self.time_domain_subsection_canvas = subsection_canvas
 
-        # Connect the selection event to the main canvas
-        self.time_domain_selection_span = None
-        self.time_domain_main_canvas.mpl_connect('button_press_event', self.on_time_domain_click)
-
     def setup_tab2(self):
+        """Set up the acoustic features tab with 6 different plots"""
         tab = QWidget()
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout()
 
-        # Frequency domain plot of full signal
-        freq_label = QLabel("Frequency Domain:")
-        layout.addWidget(freq_label)
+        # Add title
+        title_label = QLabel("Acoustic Features Analysis")
+        title_label.setAlignment(Qt.AlignCenter)
+        font = title_label.font()
+        font.setBold(True)
+        font.setPointSize(12)
+        title_label.setFont(font)
+        main_layout.addWidget(title_label)
 
-        freq_figure = Figure(figsize=(10, 4))
-        freq_canvas = FigureCanvas(freq_figure)
-        freq_toolbar = NavigationToolbar(freq_canvas, self)
-        layout.addWidget(freq_toolbar)
-        layout.addWidget(freq_canvas)
+        # Create a 3x2 grid layout for the six plots
+        grid_layout = QVBoxLayout()
 
-        # Frequency domain plot of selected subsection
-        subsection_freq_label = QLabel("Selected Fragment (Frequency Domain):")
-        layout.addWidget(subsection_freq_label)
+        # First row: Volume and Frequency Centroid
+        row1_layout = QHBoxLayout()
 
-        subsection_freq_figure = Figure(figsize=(10, 2))
-        subsection_freq_canvas = FigureCanvas(subsection_freq_figure)
-        layout.addWidget(subsection_freq_canvas)
+        # Volume plot
+        volume_widget = QWidget()
+        volume_layout = QVBoxLayout()
+        volume_label = QLabel("Volume (Vol)")
+        volume_layout.addWidget(volume_label)
 
-        tab.setLayout(layout)
-        self.tabs.addTab(tab, "Frequency Domain")
+        volume_figure = Figure(figsize=(5, 2))
+        volume_canvas = FigureCanvas(volume_figure)
+        volume_layout.addWidget(volume_canvas)
+        volume_widget.setLayout(volume_layout)
 
-        # Store references to canvas and figures for later updates
-        self.freq_domain_figure = freq_figure
-        self.freq_domain_canvas = freq_canvas
-        self.freq_domain_subsection_figure = subsection_freq_figure
-        self.freq_domain_subsection_canvas = subsection_freq_canvas
+        # Frequency Centroid plot
+        fc_widget = QWidget()
+        fc_layout = QVBoxLayout()
+        fc_label = QLabel("Frequency Centroid (FC)")
+        fc_layout.addWidget(fc_label)
+
+        fc_figure = Figure(figsize=(5, 2))
+        fc_canvas = FigureCanvas(fc_figure)
+        fc_layout.addWidget(fc_canvas)
+        fc_widget.setLayout(fc_layout)
+
+        # Add to first row
+        row1_layout.addWidget(volume_widget)
+        row1_layout.addWidget(fc_widget)
+        grid_layout.addLayout(row1_layout)
+
+        # Second row: Effective Bandwidth and Band Energy Ratio
+        row2_layout = QHBoxLayout()
+
+        # Effective Bandwidth plot
+        bw_widget = QWidget()
+        bw_layout = QVBoxLayout()
+        bw_label = QLabel("Effective Bandwidth (BW)")
+        bw_layout.addWidget(bw_label)
+
+        bw_figure = Figure(figsize=(5, 2))
+        bw_canvas = FigureCanvas(bw_figure)
+        bw_layout.addWidget(bw_canvas)
+        bw_widget.setLayout(bw_layout)
+
+        # Band Energy Ratio plot
+        ber_widget = QWidget()
+        ber_layout = QVBoxLayout()
+        ber_label = QLabel("Band Energy Ratio (BER)")
+        ber_layout.addWidget(ber_label)
+
+        ber_figure = Figure(figsize=(5, 2))
+        ber_canvas = FigureCanvas(ber_figure)
+        ber_layout.addWidget(ber_canvas)
+        ber_widget.setLayout(ber_layout)
+
+        # Add to second row
+        row2_layout.addWidget(bw_widget)
+        row2_layout.addWidget(ber_widget)
+        grid_layout.addLayout(row2_layout)
+
+        # Third row: Spectral Flatness Measure and Spectral Crest Factor
+        row3_layout = QHBoxLayout()
+
+        # Spectral Flatness Measure plot
+        sfm_widget = QWidget()
+        sfm_layout = QVBoxLayout()
+        sfm_label = QLabel("Spectral Flatness Measure (SFM)")
+        sfm_layout.addWidget(sfm_label)
+
+        sfm_figure = Figure(figsize=(5, 2))
+        sfm_canvas = FigureCanvas(sfm_figure)
+        sfm_layout.addWidget(sfm_canvas)
+        sfm_widget.setLayout(sfm_layout)
+
+        # Spectral Crest Factor plot
+        scf_widget = QWidget()
+        scf_layout = QVBoxLayout()
+        scf_label = QLabel("Spectral Crest Factor (SCF)")
+        scf_layout.addWidget(scf_label)
+
+        scf_figure = Figure(figsize=(5, 2))
+        scf_canvas = FigureCanvas(scf_figure)
+        scf_layout.addWidget(scf_canvas)
+        scf_widget.setLayout(scf_layout)
+
+        # Add to third row
+        row3_layout.addWidget(sfm_widget)
+        row3_layout.addWidget(scf_widget)
+        grid_layout.addLayout(row3_layout)
+
+        # Add the grid layout to the main layout
+        main_layout.addLayout(grid_layout)
+
+        # Add analysis controls at the bottom (optional)
+        controls_layout = QHBoxLayout()
+
+        # Frame size control
+        frame_size_label = QLabel("Frame Size (ms):")
+        controls_layout.addWidget(frame_size_label)
+
+        frame_size_slider = QSlider(Qt.Horizontal)
+        frame_size_slider.setMinimum(10)  # 10ms
+        frame_size_slider.setMaximum(100)  # 100ms
+        frame_size_slider.setValue(20)  # Default 20ms
+        frame_size_slider.setTickPosition(QSlider.TicksBelow)
+        frame_size_slider.setTickInterval(10)
+        frame_size_slider.valueChanged.connect(self.on_acoustic_frame_size_changed)
+        controls_layout.addWidget(frame_size_slider)
+
+        frame_size_value_label = QLabel("20 ms")
+        controls_layout.addWidget(frame_size_value_label)
+
+        # Hop size control
+        hop_size_label = QLabel("Hop Size (%):")
+        controls_layout.addWidget(hop_size_label)
+
+        hop_size_slider = QSlider(Qt.Horizontal)
+        hop_size_slider.setMinimum(10)  # 10%
+        hop_size_slider.setMaximum(100)  # 100%
+        hop_size_slider.setValue(50)  # Default 50%
+        hop_size_slider.setTickPosition(QSlider.TicksBelow)
+        hop_size_slider.setTickInterval(10)
+        hop_size_slider.valueChanged.connect(self.on_acoustic_hop_size_changed)
+        controls_layout.addWidget(hop_size_slider)
+
+        hop_size_value_label = QLabel("50%")
+        controls_layout.addWidget(hop_size_value_label)
+
+        # Update button
+        update_button = QPushButton("Update Analysis")
+        update_button.clicked.connect(self.update_acoustic_features)
+        controls_layout.addWidget(update_button)
+
+        main_layout.addLayout(controls_layout)
+
+        tab.setLayout(main_layout)
+        self.tabs.addTab(tab, "Acoustic Features")
+
+        # Store references to the figures and canvases
+        self.acoustic_figures = {
+            'volume': volume_figure,
+            'fc': fc_figure,
+            'bw': bw_figure,
+            'ber': ber_figure,
+            'sfm': sfm_figure,
+            'scf': scf_figure
+        }
+
+        self.acoustic_canvases = {
+            'volume': volume_canvas,
+            'fc': fc_canvas,
+            'bw': bw_canvas,
+            'ber': ber_canvas,
+            'sfm': sfm_canvas,
+            'scf': scf_canvas
+        }
+
+        # Store references to the sliders and their value labels
+        self.frame_size_slider = frame_size_slider
+        self.frame_size_value_label = frame_size_value_label
+        self.hop_size_slider = hop_size_slider
+        self.hop_size_value_label = hop_size_value_label
+
+        # Default values for acoustic analysis parameters
+        self.acoustic_frame_size_ms = 20  # 20ms
+        self.acoustic_hop_size_percent = 50  # 50%
 
     def setup_tab3(self):
         tab = QWidget()
@@ -240,9 +396,37 @@ class AudioAnalyzerApp(QMainWindow):
 
         layout.addLayout(window_layout)
 
-        windowed_figure = Figure(figsize=(10, 2))
+        # Create a splitter for the two bottom plots
+        bottom_splitter = QSplitter(Qt.Horizontal)
+
+        # Left side: Time domain windowed plot
+        windowed_widget = QWidget()
+        windowed_layout = QVBoxLayout()
+        windowed_label = QLabel("Windowed Signal (Time Domain):")
+        windowed_layout.addWidget(windowed_label)
+
+        windowed_figure = Figure(figsize=(5, 2))
         windowed_canvas = FigureCanvas(windowed_figure)
-        layout.addWidget(windowed_canvas)
+        windowed_layout.addWidget(windowed_canvas)
+        windowed_widget.setLayout(windowed_layout)
+
+        # Right side: Frequency domain windowed plot
+        freq_windowed_widget = QWidget()
+        freq_windowed_layout = QVBoxLayout()
+        freq_windowed_label = QLabel("Windowed Signal (Frequency Domain):")
+        freq_windowed_layout.addWidget(freq_windowed_label)
+
+        freq_windowed_figure = Figure(figsize=(5, 2))
+        freq_windowed_canvas = FigureCanvas(freq_windowed_figure)
+        freq_windowed_layout.addWidget(freq_windowed_canvas)
+        freq_windowed_widget.setLayout(freq_windowed_layout)
+
+        # Add both widgets to the splitter
+        bottom_splitter.addWidget(windowed_widget)
+        bottom_splitter.addWidget(freq_windowed_widget)
+
+        # Add splitter to main layout
+        layout.addWidget(bottom_splitter)
 
         tab.setLayout(layout)
         self.tabs.addTab(tab, "Window Function")
@@ -252,11 +436,9 @@ class AudioAnalyzerApp(QMainWindow):
         self.window_function_main_canvas = main_canvas
         self.windowed_figure = windowed_figure
         self.windowed_canvas = windowed_canvas
+        self.freq_windowed_figure = freq_windowed_figure
+        self.freq_windowed_canvas = freq_windowed_canvas
         self.window_combo = window_combo
-
-        # Connect the selection event to the main canvas (similar to tab 1)
-        self.window_function_selection_span = None
-        self.window_function_main_canvas.mpl_connect('button_press_event', self.on_window_function_click)
 
     def setup_tab4(self):
         tab = QWidget()
@@ -387,22 +569,119 @@ class AudioAnalyzerApp(QMainWindow):
 
     def copy_selected_fragment(self):
         """Copy the selected fragment when the button is clicked"""
-        # This function would be triggered by the "Select Frame" button
         if self.selected_region is None:
-            QMessageBox.information(self, "No Selection", "Please select a region first.")
+            QMessageBox.information(self, "No Selection",
+                                    "Please select a region first by clicking and dragging on the plot.")
             return
 
-        # In a real implementation, you would store the selected region
-        # and update the subsection plots
-        print("Selected fragment copied")
+        start_idx, end_idx = self.selected_region
+        start_time = start_idx / self.sample_rate
+        end_time = end_idx / self.sample_rate
+        duration = end_time - start_time
+
+        QMessageBox.information(
+            self,
+            "Selection Info",
+            f"Selected region from {start_time:.3f}s to {end_time:.3f}s\n"
+            f"Duration: {duration:.3f}s\n"
+            f"Samples: {start_idx} to {end_idx} ({end_idx - start_idx} samples)"
+        )
 
     def update_windowed_plot(self, window_type):
-        """Update the windowed signal plot based on the selected window function"""
-        if self.audio_data is None or self.selected_region is None:
+        """Update the windowed signal plots based on the selected window function"""
+        if self.audio_data is None:
             return
 
-        print(f"Window function changed to: {window_type}")
-        # Update the windowed plot with the selected window function
+        # Even if no region is selected, we can show the entire signal with windowing
+        if self.selected_region is None:
+            # Use the entire signal
+            start_idx = 0
+            end_idx = len(self.audio_data)
+        else:
+            # Use the selected region
+            start_idx, end_idx = self.selected_region
+
+        # Get the data to be windowed
+        data_to_window = self.audio_data[start_idx:end_idx]
+
+        # Create window function
+        n = len(data_to_window)
+        if n > 0:
+            if window_type == "rectangular":
+                window = np.ones(n)
+            elif window_type == "triangular":
+                window = np.bartlett(n)
+            elif window_type == "hamming":
+                window = np.hamming(n)
+            elif window_type == "hanning":
+                window = np.hanning(n)
+            elif window_type == "blackman":
+                window = np.blackman(n)
+            else:
+                window = np.ones(n)  # Default to rectangular
+
+            # Apply window function
+            windowed_data = data_to_window * window
+
+            # Update time domain windowed plot
+            self.windowed_figure.clear()
+            ax = self.windowed_figure.add_subplot(111)
+
+            # Plot time domain signal
+            time = np.arange(n) / self.sample_rate
+            ax.plot(time, windowed_data)
+            ax.set_xlabel('Time (s)')
+            ax.set_ylabel('Amplitude')
+            ax.set_title(f'Windowed Signal ({window_type})')
+
+            # Add grid
+            ax.grid(True, linestyle='--', alpha=0.7)
+
+            # Set y-axis limits with some padding
+            max_amp = np.max(np.abs(windowed_data))
+            if max_amp > 0:  # Avoid division by zero
+                ax.set_ylim([-max_amp * 1.1, max_amp * 1.1])
+
+            self.windowed_figure.tight_layout()
+            self.windowed_canvas.draw()
+
+            # Update frequency domain windowed plot
+            self.freq_windowed_figure.clear()
+            freq_ax = self.freq_windowed_figure.add_subplot(111)
+
+            # Compute FFT of the windowed signal
+            yf = np.fft.rfft(windowed_data)
+            xf = np.fft.rfftfreq(n, 1 / self.sample_rate)
+
+            # Plot magnitude spectrum in dB
+            magnitude = np.abs(yf)
+            if np.max(magnitude) > 0:  # Avoid log of zero or division by zero
+                magnitude_db = 20 * np.log10(magnitude / np.max(magnitude) + 1e-10)
+
+                freq_ax.plot(xf, magnitude_db)
+                freq_ax.set_xlabel('Frequency (Hz)')
+                freq_ax.set_ylabel('Magnitude (dB)')
+                freq_ax.set_title(f'Frequency Response ({window_type})')
+
+                # Add grid
+                freq_ax.grid(True, linestyle='--', alpha=0.7)
+
+                # Set axis limits
+                freq_ax.set_xlim([0, min(self.sample_rate / 2, 5000)])  # Limit to 5kHz for better visibility
+                freq_ax.set_ylim([-80, 0])
+
+            self.freq_windowed_figure.tight_layout()
+            self.freq_windowed_canvas.draw()
+
+            # Update status bar
+            if self.selected_region is None:
+                self.statusBar().showMessage(f"Applied {window_type} window to entire signal")
+            else:
+                selection_duration = (end_idx - start_idx) / self.sample_rate
+                self.statusBar().showMessage(
+                    f"Applied {window_type} window to selection ({start_idx} to {end_idx}, "
+                    f"duration: {selection_duration:.3f}s)"
+                )
 
     def on_frame_dur_changed(self, value):
         """Handle frame duration slider change"""
@@ -501,58 +780,55 @@ class AudioAnalyzerApp(QMainWindow):
         if self.selected_region is not None:
             self.update_time_domain_subsection_plot()
 
+
+        # Set up span selector again to ensure it's connected to the new plot
+        self.setup_span_selectors()
+
+
     def update_time_domain_subsection_plot(self):
         """Update the subsection plot in time domain tab"""
         if self.audio_data is None or self.selected_region is None:
             return
 
-        # In a real implementation, you would plot the selected portion of the signal
-        pass
-
-    def update_frequency_domain_plots(self):
-        """Update the frequency domain plots in tab 2"""
-        if self.audio_data is None or self.sample_rate is None:
-            return
+        start_idx, end_idx = self.selected_region
 
         # Clear the figure
-        self.freq_domain_figure.clear()
-        ax = self.freq_domain_figure.add_subplot(111)
+        self.time_domain_subsection_figure.clear()
+        ax = self.time_domain_subsection_figure.add_subplot(111)
 
-        # Compute FFT of the full signal
-        n = len(self.audio_data)
-        yf = np.fft.rfft(self.audio_data)
-        xf = np.fft.rfftfreq(n, 1 / self.sample_rate)
+        # Get the selected portion of the signal
+        selected_data = self.audio_data[start_idx:end_idx]
+        time = np.arange(len(selected_data)) / self.sample_rate
 
-        # Plot magnitude spectrum in dB
-        magnitude = np.abs(yf)
-        magnitude_db = 20 * np.log10(magnitude / np.max(magnitude) + 1e-10)
-
-        ax.plot(xf, magnitude_db)
-        ax.set_xlabel('Frequency (Hz)')
-        ax.set_ylabel('Magnitude (dB)')
-        ax.set_title('Frequency Domain')
+        # Plot time domain signal
+        ax.plot(time, selected_data)
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Amplitude')
+        ax.set_title('Selected Region')
 
         # Add grid
         ax.grid(True, linestyle='--', alpha=0.7)
 
-        # Set axis limits
-        ax.set_xlim([0, self.sample_rate / 2])
-        ax.set_ylim([-80, 0])
+        # Set y-axis limits with some padding
+        max_amp = np.max(np.abs(selected_data))
+        ax.set_ylim([-max_amp * 1.1, max_amp * 1.1])
 
-        self.freq_domain_figure.tight_layout()
-        self.freq_domain_canvas.draw()
+        self.time_domain_subsection_figure.tight_layout()
+        self.time_domain_subsection_canvas.draw()
 
-        # Update subsection plot if we have a selection
-        if self.selected_region is not None:
-            self.update_frequency_domain_subsection_plot()
-
-    def update_frequency_domain_subsection_plot(self):
-        """Update the subsection plot in frequency domain tab"""
-        if self.audio_data is None or self.selected_region is None:
+    def update_frequency_domain_plots(self):
+        """Update the acoustic features in tab 2"""
+        if self.audio_data is None:
             return
 
-        # In a real implementation, you would compute and plot the FFT of the selected portion
-        pass
+        # Only calculate if the tab is visible to improve performance
+        if self.tabs.currentIndex() == 1:  # Tab 2 (Acoustic Features)
+            self.update_acoustic_features()
+        else:
+            # Just clear the flag so it will update when the tab becomes visible
+            pass
+
+    
 
     def update_window_function_plots(self):
         """Update the plots in the window function tab"""
@@ -579,20 +855,20 @@ class AudioAnalyzerApp(QMainWindow):
         self.window_function_main_figure.tight_layout()
         self.window_function_main_canvas.draw()
 
-        # Update windowed plot if we have a selection
-        if self.selected_region is not None:
-            self.update_windowed_subsection_plot()
+        # Update windowed plots with current window type
+        window_type = self.window_combo.currentText()
+        self.update_windowed_plot(window_type)
 
     def update_windowed_subsection_plot(self):
         """Update the windowed subsection plot"""
-        if self.audio_data is None or self.selected_region is None:
+        if self.audio_data is None:
             return
 
-        # In a real implementation, you would apply the selected window function to the selection
-        # For now, just get the current window type from the combo box
+        # Get current window type
         window_type = self.window_combo.currentText()
-        # And update the plot
-        pass
+
+        # Call the main update method
+        self.update_windowed_plot(window_type)
 
     def update_fundamental_frequency_plot(self):
         """Update the fundamental frequency plot"""
@@ -612,6 +888,281 @@ class AudioAnalyzerApp(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "F0 plot Error", f"Error updating f0_plot: {str(e)}")
             print(f"Error updating f0 plot: {e}")
+
+    def setup_span_selectors(self):
+        """Set up span selectors for interactive region selection"""
+        # Get the current axes from the figures
+        time_ax = self.time_domain_main_figure.gca()
+        window_ax = self.window_function_main_figure.gca()
+
+        # First tab span selector
+        if time_ax is not None:
+            # If a previous span selector exists, disconnect it
+            if hasattr(self, 'time_domain_span_selector') and self.time_domain_span_selector is not None:
+                self.time_domain_span_selector.disconnect_events()
+
+            # Create a new span selector with clear visual feedback
+            self.time_domain_span_selector = SpanSelector(
+                time_ax,
+                self.on_time_domain_select,
+                'horizontal',
+                useblit=True,
+                props=dict(alpha=0.3, facecolor='blue'),
+                interactive=True,
+                drag_from_anywhere=True,
+                button=1  # Left mouse button
+            )
+            # Let the user know they can now select
+            self.statusBar().showMessage("Click and drag to select a region on the plot", 3000)
+
+        # Window function tab span selector
+        if window_ax is not None:
+            # If a previous span selector exists, disconnect it
+            if hasattr(self, 'window_function_span_selector') and self.window_function_span_selector is not None:
+                self.window_function_span_selector.disconnect_events()
+
+            # Create new span selector
+            self.window_function_span_selector = SpanSelector(
+                window_ax,
+                self.on_window_function_select,
+                'horizontal',
+                useblit=True,
+                props=dict(alpha=0.3, facecolor='green'),
+                interactive=True,
+                drag_from_anywhere=True,
+                button=1  # Left mouse button
+            )
+
+        # Add selection callback methods
+
+    # Add selection callback methods
+    def on_time_domain_select(self, xmin, xmax):
+        """Handle selection in time domain plot"""
+        if self.audio_data is None or self.sample_rate is None:
+            return
+
+        # Convert time values to sample indices
+        start_idx = max(0, int(xmin * self.sample_rate))
+        end_idx = min(len(self.audio_data) - 1, int(xmax * self.sample_rate))
+
+        if start_idx >= end_idx:
+            return  # Invalid selection
+
+        # Store the selected region
+        self.selected_region = (start_idx, end_idx)
+
+        # Update the subsection plots
+        self.update_time_domain_subsection_plot()
+
+
+        # Update status bar with selection info
+        selection_duration = (end_idx - start_idx) / self.sample_rate
+        self.statusBar().showMessage(
+            f"Selected region: {xmin:.3f}s to {xmax:.3f}s (Duration: {selection_duration:.3f}s)")
+
+        # If we're in the window function tab, also update that plot
+        current_tab = self.tabs.currentIndex()
+        if current_tab == 2:  # Window Function tab
+            # Get current window type and update the windowed plots
+            window_type = self.window_combo.currentText()
+            self.update_windowed_plot(window_type)
+
+    def on_window_function_select(self, xmin, xmax):
+        """Handle selection in window function plot"""
+        # Call the same handler as time domain since the functionality is identical
+        self.on_time_domain_select(xmin, xmax)
+
+    def on_acoustic_frame_size_changed(self, value):
+        """Handle changes to the frame size slider"""
+        self.acoustic_frame_size_ms = value
+        self.frame_size_value_label.setText(f"{value} ms")
+        # No automatic update to avoid performance issues with large files
+
+    def on_acoustic_hop_size_changed(self, value):
+        """Handle changes to the hop size slider"""
+        self.acoustic_hop_size_percent = value
+        self.hop_size_value_label.setText(f"{value}%")
+        # No automatic update to avoid performance issues with large files
+
+    def update_acoustic_features(self):
+        """Update all acoustic feature plots based on current settings"""
+        if self.audio_data is None or self.sample_rate is None:
+            QMessageBox.warning(self, "No Data", "Please load an audio file first.")
+            return
+
+        try:
+            # Calculate frame size in samples
+            frame_size_samples = int((self.acoustic_frame_size_ms / 1000.0) * self.sample_rate)
+
+            # Calculate hop size in samples
+            hop_size_samples = int(frame_size_samples * (self.acoustic_hop_size_percent / 100.0))
+
+            # Update status
+            self.statusBar().showMessage(
+                f"Calculating acoustic features (Frame: {self.acoustic_frame_size_ms}ms, Hop: {self.acoustic_hop_size_percent}%)...")
+
+            # Update each feature plot
+            self.update_volume_plot(frame_size_samples, hop_size_samples)
+            self.update_frequency_centroid_plot(frame_size_samples, hop_size_samples)
+            self.update_bandwidth_plot(frame_size_samples, hop_size_samples)
+            self.update_band_energy_ratio_plot(frame_size_samples, hop_size_samples)
+            self.update_spectral_flatness_plot(frame_size_samples, hop_size_samples)
+            self.update_spectral_crest_plot(frame_size_samples, hop_size_samples)
+
+            # Update status
+            self.statusBar().showMessage("Acoustic features analysis complete.")
+
+        except Exception as e:
+            QMessageBox.warning(self, "Analysis Error", f"Error calculating acoustic features: {str(e)}")
+            print(f"Error in acoustic features analysis: {e}")
+
+    # Add supporting methods for the acoustic features tab
+    def on_acoustic_frame_size_changed(self, value):
+        """Handle changes to the frame size slider"""
+        self.acoustic_frame_size_ms = value
+        self.frame_size_value_label.setText(f"{value} ms")
+        # No automatic update to avoid performance issues with large files
+
+    def on_acoustic_hop_size_changed(self, value):
+        """Handle changes to the hop size slider"""
+        self.acoustic_hop_size_percent = value
+        self.hop_size_value_label.setText(f"{value}%")
+        # No automatic update to avoid performance issues with large files
+
+    # Methods for updating individual feature plots
+    def update_volume_plot(self, frame_size, hop_size):
+        """Update the volume plot"""
+        if self.audio_data is None:
+            return
+
+        # Clear the figure
+        self.acoustic_figures['volume'].clear()
+        ax = self.acoustic_figures['volume'].add_subplot(111)
+
+        # Here you would calculate and plot the volume
+        # Instead, we'll just set up the axes
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Volume (dB)')
+        ax.set_title('Volume')
+        ax.grid(True, linestyle='--', alpha=0.7)
+
+        # YOU WILL IMPLEMENT THE ACTUAL PLOTTING HERE
+
+        self.acoustic_figures['volume'].tight_layout()
+        self.acoustic_canvases['volume'].draw()
+
+    def update_frequency_centroid_plot(self, frame_size, hop_size):
+        """Update the frequency centroid plot"""
+        if self.audio_data is None:
+            return
+
+        # Clear the figure
+        self.acoustic_figures['fc'].clear()
+        ax = self.acoustic_figures['fc'].add_subplot(111)
+
+        # Here you would calculate and plot the frequency centroid
+        # Instead, we'll just set up the axes
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Frequency (Hz)')
+        ax.set_title('Frequency Centroid')
+        ax.grid(True, linestyle='--', alpha=0.7)
+
+        # YOU WILL IMPLEMENT THE ACTUAL PLOTTING HERE
+
+        self.acoustic_figures['fc'].tight_layout()
+        self.acoustic_canvases['fc'].draw()
+
+    def update_bandwidth_plot(self, frame_size, hop_size):
+        """Update the effective bandwidth plot"""
+        if self.audio_data is None:
+            return
+
+        # Clear the figure
+        self.acoustic_figures['bw'].clear()
+        ax = self.acoustic_figures['bw'].add_subplot(111)
+
+        # Here you would calculate and plot the bandwidth
+        # Instead, we'll just set up the axes
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Bandwidth (Hz)')
+        ax.set_title('Effective Bandwidth')
+        ax.grid(True, linestyle='--', alpha=0.7)
+
+        # YOU WILL IMPLEMENT THE ACTUAL PLOTTING HERE
+
+        self.acoustic_figures['bw'].tight_layout()
+        self.acoustic_canvases['bw'].draw()
+
+    def update_band_energy_ratio_plot(self, frame_size, hop_size):
+        """Update the band energy ratio plot"""
+        if self.audio_data is None:
+            return
+
+        # Clear the figure
+        self.acoustic_figures['ber'].clear()
+        ax = self.acoustic_figures['ber'].add_subplot(111)
+
+        # Here you would calculate and plot the band energy ratio
+        # Instead, we'll just set up the axes
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('BER')
+        ax.set_title('Band Energy Ratio')
+        ax.grid(True, linestyle='--', alpha=0.7)
+
+        # YOU WILL IMPLEMENT THE ACTUAL PLOTTING HERE
+
+        self.acoustic_figures['ber'].tight_layout()
+        self.acoustic_canvases['ber'].draw()
+
+    def update_spectral_flatness_plot(self, frame_size, hop_size):
+        """Update the spectral flatness measure plot"""
+        if self.audio_data is None:
+            return
+
+        # Clear the figure
+        self.acoustic_figures['sfm'].clear()
+        ax = self.acoustic_figures['sfm'].add_subplot(111)
+
+        # Here you would calculate and plot the spectral flatness
+        # Instead, we'll just set up the axes
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('SFM')
+        ax.set_title('Spectral Flatness Measure')
+        ax.grid(True, linestyle='--', alpha=0.7)
+
+        # YOU WILL IMPLEMENT THE ACTUAL PLOTTING HERE
+
+        self.acoustic_figures['sfm'].tight_layout()
+        self.acoustic_canvases['sfm'].draw()
+
+    def update_spectral_crest_plot(self, frame_size, hop_size):
+        """Update the spectral crest factor plot"""
+        if self.audio_data is None:
+            return
+
+        # Clear the figure
+        self.acoustic_figures['scf'].clear()
+        ax = self.acoustic_figures['scf'].add_subplot(111)
+
+        # Here you would calculate and plot the spectral crest factor
+        # Instead, we'll just set up the axes
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('SCF')
+        ax.set_title('Spectral Crest Factor')
+        ax.grid(True, linestyle='--', alpha=0.7)
+
+        # YOU WILL IMPLEMENT THE ACTUAL PLOTTING HERE
+
+        self.acoustic_figures['scf'].tight_layout()
+        self.acoustic_canvases['scf'].draw()
+
+    def handle_tab_changed(self, index):
+        """Handle tab change events"""
+        if index == 1 and self.audio_data is not None:  # Tab 2 (Acoustic Features)
+            # Update acoustic features when switching to this tab
+            self.update_acoustic_features()
+
+
 
 
 if __name__ == '__main__':
