@@ -199,7 +199,7 @@ class AudioAnalyzerApp(QMainWindow):
         volume_label = QLabel("Volume (Vol)")
         volume_layout.addWidget(volume_label)
 
-        volume_figure = Figure(figsize=(5, 2))
+        volume_figure = Figure(figsize=(5, 3))
         volume_canvas = FigureCanvas(volume_figure)
         volume_layout.addWidget(volume_canvas)
         volume_widget.setLayout(volume_layout)
@@ -210,7 +210,7 @@ class AudioAnalyzerApp(QMainWindow):
         fc_label = QLabel("Frequency Centroid (FC)")
         fc_layout.addWidget(fc_label)
 
-        fc_figure = Figure(figsize=(5, 2))
+        fc_figure = Figure(figsize=(5, 3))
         fc_canvas = FigureCanvas(fc_figure)
         fc_layout.addWidget(fc_canvas)
         fc_widget.setLayout(fc_layout)
@@ -229,7 +229,7 @@ class AudioAnalyzerApp(QMainWindow):
         bw_label = QLabel("Effective Bandwidth (BW)")
         bw_layout.addWidget(bw_label)
 
-        bw_figure = Figure(figsize=(5, 2))
+        bw_figure = Figure(figsize=(5, 3))
         bw_canvas = FigureCanvas(bw_figure)
         bw_layout.addWidget(bw_canvas)
         bw_widget.setLayout(bw_layout)
@@ -240,7 +240,7 @@ class AudioAnalyzerApp(QMainWindow):
         ber_label = QLabel("Band Energy Ratio (BER)")
         ber_layout.addWidget(ber_label)
 
-        ber_figure = Figure(figsize=(5, 2))
+        ber_figure = Figure(figsize=(5, 3))
         ber_canvas = FigureCanvas(ber_figure)
         ber_layout.addWidget(ber_canvas)
         ber_widget.setLayout(ber_layout)
@@ -259,7 +259,7 @@ class AudioAnalyzerApp(QMainWindow):
         sfm_label = QLabel("Spectral Flatness Measure (SFM)")
         sfm_layout.addWidget(sfm_label)
 
-        sfm_figure = Figure(figsize=(5, 2))
+        sfm_figure = Figure(figsize=(5, 3))
         sfm_canvas = FigureCanvas(sfm_figure)
         sfm_layout.addWidget(sfm_canvas)
         sfm_widget.setLayout(sfm_layout)
@@ -270,7 +270,7 @@ class AudioAnalyzerApp(QMainWindow):
         scf_label = QLabel("Spectral Crest Factor (SCF)")
         scf_layout.addWidget(scf_label)
 
-        scf_figure = Figure(figsize=(5, 2))
+        scf_figure = Figure(figsize=(5, 3))
         scf_canvas = FigureCanvas(scf_figure)
         scf_layout.addWidget(scf_canvas)
         scf_widget.setLayout(scf_layout)
@@ -405,7 +405,7 @@ class AudioAnalyzerApp(QMainWindow):
         windowed_label = QLabel("Windowed Signal (Time Domain):")
         windowed_layout.addWidget(windowed_label)
 
-        windowed_figure = Figure(figsize=(5, 2))
+        windowed_figure = Figure(figsize=(5, 3))
         windowed_canvas = FigureCanvas(windowed_figure)
         windowed_layout.addWidget(windowed_canvas)
         windowed_widget.setLayout(windowed_layout)
@@ -416,7 +416,7 @@ class AudioAnalyzerApp(QMainWindow):
         freq_windowed_label = QLabel("Windowed Signal (Frequency Domain):")
         freq_windowed_layout.addWidget(freq_windowed_label)
 
-        freq_windowed_figure = Figure(figsize=(5, 2))
+        freq_windowed_figure = Figure(figsize=(5, 3))
         freq_windowed_canvas = FigureCanvas(freq_windowed_figure)
         freq_windowed_layout.addWidget(freq_windowed_canvas)
         freq_windowed_widget.setLayout(freq_windowed_layout)
@@ -828,7 +828,7 @@ class AudioAnalyzerApp(QMainWindow):
             # Just clear the flag so it will update when the tab becomes visible
             pass
 
-    
+
 
     def update_window_function_plots(self):
         """Update the plots in the window function tab"""
@@ -972,17 +972,6 @@ class AudioAnalyzerApp(QMainWindow):
         # Call the same handler as time domain since the functionality is identical
         self.on_time_domain_select(xmin, xmax)
 
-    def on_acoustic_frame_size_changed(self, value):
-        """Handle changes to the frame size slider"""
-        self.acoustic_frame_size_ms = value
-        self.frame_size_value_label.setText(f"{value} ms")
-        # No automatic update to avoid performance issues with large files
-
-    def on_acoustic_hop_size_changed(self, value):
-        """Handle changes to the hop size slider"""
-        self.acoustic_hop_size_percent = value
-        self.hop_size_value_label.setText(f"{value}%")
-        # No automatic update to avoid performance issues with large files
 
     def update_acoustic_features(self):
         """Update all acoustic feature plots based on current settings"""
@@ -991,23 +980,23 @@ class AudioAnalyzerApp(QMainWindow):
             return
 
         try:
-            # Calculate frame size in samples
-            frame_size_samples = int((self.acoustic_frame_size_ms / 1000.0) * self.sample_rate)
-
-            # Calculate hop size in samples
-            hop_size_samples = int(frame_size_samples * (self.acoustic_hop_size_percent / 100.0))
+            # # Calculate frame size in samples
+            # frame_size_samples = int((self.acoustic_frame_size_ms / 1000.0) * self.sample_rate)
+            #
+            # # Calculate hop size in samples
+            # hop_size_samples = int(frame_size_samples * (self.acoustic_hop_size_percent / 100.0))
 
             # Update status
             self.statusBar().showMessage(
                 f"Calculating acoustic features (Frame: {self.acoustic_frame_size_ms}ms, Hop: {self.acoustic_hop_size_percent}%)...")
 
             # Update each feature plot
-            self.update_volume_plot(frame_size_samples, hop_size_samples)
-            self.update_frequency_centroid_plot(frame_size_samples, hop_size_samples)
-            self.update_bandwidth_plot(frame_size_samples, hop_size_samples)
-            self.update_band_energy_ratio_plot(frame_size_samples, hop_size_samples)
-            self.update_spectral_flatness_plot(frame_size_samples, hop_size_samples)
-            self.update_spectral_crest_plot(frame_size_samples, hop_size_samples)
+            self.update_volume_plot(self.acoustic_frame_size_ms, self.acoustic_hop_size_percent)
+            self.update_frequency_centroid_plot(self.acoustic_frame_size_ms, self.acoustic_hop_size_percent)
+            self.update_bandwidth_plot(self.acoustic_frame_size_ms, self.acoustic_hop_size_percent)
+            self.update_band_energy_ratio_plot(self.acoustic_frame_size_ms, self.acoustic_hop_size_percent)
+            self.update_spectral_flatness_plot(self.acoustic_frame_size_ms, self.acoustic_hop_size_percent)
+            self.update_spectral_crest_plot(self.acoustic_frame_size_ms, self.acoustic_hop_size_percent)
 
             # Update status
             self.statusBar().showMessage("Acoustic features analysis complete.")
@@ -1021,140 +1010,136 @@ class AudioAnalyzerApp(QMainWindow):
         """Handle changes to the frame size slider"""
         self.acoustic_frame_size_ms = value
         self.frame_size_value_label.setText(f"{value} ms")
+        # self.update_acoustic_features()
         # No automatic update to avoid performance issues with large files
 
     def on_acoustic_hop_size_changed(self, value):
         """Handle changes to the hop size slider"""
         self.acoustic_hop_size_percent = value
         self.hop_size_value_label.setText(f"{value}%")
+        # self.update_acoustic_features()
         # No automatic update to avoid performance issues with large files
 
     # Methods for updating individual feature plots
     def update_volume_plot(self, frame_size, hop_size):
         """Update the volume plot"""
-        if self.audio_data is None:
+        if self.audio_data is None or self.sample_rate is None:
             return
 
-        # Clear the figure
-        self.acoustic_figures['volume'].clear()
-        ax = self.acoustic_figures['volume'].add_subplot(111)
-
-        # Here you would calculate and plot the volume
-        # Instead, we'll just set up the axes
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Volume (dB)')
-        ax.set_title('Volume')
-        ax.grid(True, linestyle='--', alpha=0.7)
-
-        # YOU WILL IMPLEMENT THE ACTUAL PLOTTING HERE
-
-        self.acoustic_figures['volume'].tight_layout()
-        self.acoustic_canvases['volume'].draw()
+        try:
+            # Call the imported plot_spectrogram_in_figure function with current parameters
+            plot_volume(
+                self.acoustic_figures['volume'],
+                self.sample_rate,
+                self.audio_data,
+                overlap = hop_size/100,
+                min_frame_dur=frame_size/1000
+            )
+            # Update canvas
+            self.acoustic_canvases['volume'].draw()
+        except Exception as e:
+            QMessageBox.warning(self, "Volume Plot error", f"Error updating volume plot: {str(e)}")
+            print(f"Error updating volume plot: {e}")
 
     def update_frequency_centroid_plot(self, frame_size, hop_size):
         """Update the frequency centroid plot"""
         if self.audio_data is None:
             return
 
-        # Clear the figure
-        self.acoustic_figures['fc'].clear()
-        ax = self.acoustic_figures['fc'].add_subplot(111)
-
-        # Here you would calculate and plot the frequency centroid
-        # Instead, we'll just set up the axes
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Frequency (Hz)')
-        ax.set_title('Frequency Centroid')
-        ax.grid(True, linestyle='--', alpha=0.7)
-
-        # YOU WILL IMPLEMENT THE ACTUAL PLOTTING HERE
-
-        self.acoustic_figures['fc'].tight_layout()
-        self.acoustic_canvases['fc'].draw()
+        try:
+            # Call the imported plot_spectrogram_in_figure function with current parameters
+            plot_frequency_centroid(
+                self.acoustic_figures['fc'],
+                self.sample_rate,
+                self.audio_data,
+                overlap=hop_size / 100,
+                min_frame_dur=frame_size / 1000
+            )
+            # Update canvas
+            self.acoustic_canvases['fc'].draw()
+        except Exception as e:
+            QMessageBox.warning(self, "Frequency Centroid Plot error", f"Error updating frequency centroid plot: {str(e)}")
+            print(f"Error updating frequency centroid plot: {e}")
 
     def update_bandwidth_plot(self, frame_size, hop_size):
         """Update the effective bandwidth plot"""
         if self.audio_data is None:
             return
 
-        # Clear the figure
-        self.acoustic_figures['bw'].clear()
-        ax = self.acoustic_figures['bw'].add_subplot(111)
-
-        # Here you would calculate and plot the bandwidth
-        # Instead, we'll just set up the axes
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Bandwidth (Hz)')
-        ax.set_title('Effective Bandwidth')
-        ax.grid(True, linestyle='--', alpha=0.7)
-
-        # YOU WILL IMPLEMENT THE ACTUAL PLOTTING HERE
-
-        self.acoustic_figures['bw'].tight_layout()
-        self.acoustic_canvases['bw'].draw()
+        try:
+            # Call the imported plot_spectrogram_in_figure function with current parameters
+            plot_ef_bandwidth(
+                self.acoustic_figures['bw'],
+                self.sample_rate,
+                self.audio_data,
+                overlap=hop_size / 100,
+                min_frame_dur=frame_size / 1000
+            )
+            # Update canvas
+            self.acoustic_canvases['bw'].draw()
+        except Exception as e:
+            QMessageBox.warning(self, "Effective bandwidth error", f"Error updating effective bandwidth plot: {str(e)}")
+            print(f"Error updating effective bandwidth plot: {e}")
 
     def update_band_energy_ratio_plot(self, frame_size, hop_size):
         """Update the band energy ratio plot"""
         if self.audio_data is None:
             return
 
-        # Clear the figure
-        self.acoustic_figures['ber'].clear()
-        ax = self.acoustic_figures['ber'].add_subplot(111)
-
-        # Here you would calculate and plot the band energy ratio
-        # Instead, we'll just set up the axes
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('BER')
-        ax.set_title('Band Energy Ratio')
-        ax.grid(True, linestyle='--', alpha=0.7)
-
-        # YOU WILL IMPLEMENT THE ACTUAL PLOTTING HERE
-
-        self.acoustic_figures['ber'].tight_layout()
-        self.acoustic_canvases['ber'].draw()
+        try:
+            # Call the imported plot_spectrogram_in_figure function with current parameters
+            plot_ber(
+                self.acoustic_figures['ber'],
+                self.sample_rate,
+                self.audio_data,
+                overlap=hop_size / 100,
+                min_frame_dur=frame_size / 1000
+            )
+            # Update canvas
+            self.acoustic_canvases['ber'].draw()
+        except Exception as e:
+            QMessageBox.warning(self, "Band energy ratio error", f"Error updating band energy ratio plot: {str(e)}")
+            print(f"Error updating band energy ratio plot: {e}")
 
     def update_spectral_flatness_plot(self, frame_size, hop_size):
         """Update the spectral flatness measure plot"""
         if self.audio_data is None:
             return
 
-        # Clear the figure
-        self.acoustic_figures['sfm'].clear()
-        ax = self.acoustic_figures['sfm'].add_subplot(111)
-
-        # Here you would calculate and plot the spectral flatness
-        # Instead, we'll just set up the axes
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('SFM')
-        ax.set_title('Spectral Flatness Measure')
-        ax.grid(True, linestyle='--', alpha=0.7)
-
-        # YOU WILL IMPLEMENT THE ACTUAL PLOTTING HERE
-
-        self.acoustic_figures['sfm'].tight_layout()
-        self.acoustic_canvases['sfm'].draw()
+        try:
+            # Call the imported plot_spectrogram_in_figure function with current parameters
+            plot_sfm(
+                self.acoustic_figures['sfm'],
+                self.sample_rate,
+                self.audio_data,
+                overlap=hop_size / 100,
+                min_frame_dur=frame_size / 1000
+            )
+            # Update canvas
+            self.acoustic_canvases['sfm'].draw()
+        except Exception as e:
+            QMessageBox.warning(self, "Spectral flatness measure error", f"Error updating spectral flatness measure plot: {str(e)}")
+            print(f"Error updating spectral flatness measure plot: {e}")
 
     def update_spectral_crest_plot(self, frame_size, hop_size):
         """Update the spectral crest factor plot"""
         if self.audio_data is None:
             return
 
-        # Clear the figure
-        self.acoustic_figures['scf'].clear()
-        ax = self.acoustic_figures['scf'].add_subplot(111)
-
-        # Here you would calculate and plot the spectral crest factor
-        # Instead, we'll just set up the axes
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('SCF')
-        ax.set_title('Spectral Crest Factor')
-        ax.grid(True, linestyle='--', alpha=0.7)
-
-        # YOU WILL IMPLEMENT THE ACTUAL PLOTTING HERE
-
-        self.acoustic_figures['scf'].tight_layout()
-        self.acoustic_canvases['scf'].draw()
+        try:
+            # Call the imported plot_spectrogram_in_figure function with current parameters
+            plot_scf(
+                self.acoustic_figures['scf'],
+                self.sample_rate,
+                self.audio_data,
+                overlap=hop_size / 100,
+                min_frame_dur=frame_size / 1000
+            )
+            # Update canvas
+            self.acoustic_canvases['scf'].draw()
+        except Exception as e:
+            QMessageBox.warning(self, "Spectral crest factor error", f"Error updating spectral crest factor plot: {str(e)}")
+            print(f"Error updating spectral crest factor plot: {e}")
 
     def handle_tab_changed(self, index):
         """Handle tab change events"""

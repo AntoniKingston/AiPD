@@ -155,6 +155,189 @@ def plot_f0_from_cepstrum(fig, signal, sr):
 
     fig.tight_layout()
 
+def plot_volume(fig, sr, signal, overlap=0.5, min_frame_dur=0.2):
+    fig.clear()
+    l = frame_length(sr, min_frame_dur)
+    frames = frame_signal(signal, l, overlap)
+    windowed_frames = np.array([window_signal(frame, 'hamming') for frame in frames])
+    spec, freqs = dtft(windowed_frames, sr)
+    spec = np.abs(spec)
+    vols = [vol(frame) for frame in spec]
+
+    total_duration = len(signal) / sr
+    sns.set_theme(style="darkgrid")
+
+    ax = fig.add_subplot(111)
+
+    sns.lineplot(vols, ax=ax)
+    ax.set_xlabel("time[s]")
+    ax.set_ylabel("Volume")
+    ax.set_title(f"Volume")
+
+    ax.set_xticks(np.linspace(0, len(vols), 10))
+    ax.set_xticklabels([f"{t:.2f}s" for t in np.linspace(0, total_duration, 10)])
+
+    fig.tight_layout()
+
+def plot_frequency_centroid(fig, sr, signal, overlap=0.5, min_frame_dur=0.2):
+    fig.clear()
+    l = frame_length(sr, min_frame_dur)
+    frames = frame_signal(signal, l, overlap)
+    windowed_frames = np.array([window_signal(frame, 'hamming') for frame in frames])
+    spec, freqs = dtft(windowed_frames, sr)
+    spec = np.abs(spec)
+    centroids = [frequency_centroid(frame, freqs) for frame in spec]
+
+    total_duration = len(signal) / sr
+    sns.set_theme(style="darkgrid")
+
+    ax = fig.add_subplot(111)
+
+    sns.lineplot(centroids, ax=ax)
+    ax.set_xlabel("time[s]")
+    ax.set_ylabel("Frequency Centroid")
+    ax.set_title(f"Frequency Centroid")
+
+    ax.set_xticks(np.linspace(0, len(centroids), 10))
+    ax.set_xticklabels([f"{t:.2f}s" for t in np.linspace(0, total_duration, 10)])
+
+    fig.tight_layout()
+
+def plot_ef_bandwidth(fig, sr, signal, overlap=0.5, min_frame_dur=0.2):
+    fig.clear()
+    l = frame_length(sr, min_frame_dur)
+    frames = frame_signal(signal, l, overlap)
+    windowed_frames = np.array([window_signal(frame, 'hamming') for frame in frames])
+    spec, freqs = dtft(windowed_frames, sr)
+    spec = np.abs(spec)
+    bandwidths = [effective_bandwidth(frame, freqs) for frame in spec]
+
+    total_duration = len(signal) / sr
+    sns.set_theme(style="darkgrid")
+
+    ax = fig.add_subplot(111)
+
+    sns.lineplot(bandwidths, ax=ax)
+    ax.set_xlabel("time[s]")
+    ax.set_ylabel("Effective Bandwidth")
+    ax.set_title(f"Effective Bandwidth")
+
+    ax.set_xticks(np.linspace(0, len(bandwidths), 10))
+    ax.set_xticklabels([f"{t:.2f}s" for t in np.linspace(0, total_duration, 10)])
+
+def plot_ber(fig, sr, signal, overlap=0.5, min_frame_dur=0.2):
+    fig.clear()
+    l = frame_length(sr, min_frame_dur)
+    frames = frame_signal(signal, l, overlap)
+    windowed_frames = np.array([window_signal(frame, 'hamming') for frame in frames])
+    spec, freqs = dtft(windowed_frames, sr)
+    spec = np.abs(spec)
+    f0,f1,f2,f3 = 0, 630, 1720, 4400
+    num_freq_bins = spec.shape[1]
+    idx0 = 0
+    idx1 = int(f1 / (sr / 2) * (num_freq_bins - 1))
+    idx2 = int(f2 / (sr / 2) * (num_freq_bins - 1))
+    idx3 = int(f3 / (sr / 2) * (num_freq_bins - 1))
+    band1 = spec[:, idx0:idx1]
+    band2 = spec[:, idx1:idx2]
+    band3 = spec[:, idx2:idx3]
+    esrb1 = [ESRB(l, frame, vol(spec[i])) for i,frame in enumerate(band1)]
+    esrb2 = [ESRB(l, frame, vol(spec[i])) for i,frame in enumerate(band2)]
+    esrb3 = [ESRB(l, frame, vol(spec[i])) for i,frame in enumerate(band3)]
+
+    total_duration = len(signal) / sr
+    sns.set_theme(style="darkgrid")
+
+    ax = fig.add_subplot(111)
+
+    sns.lineplot(esrb1, ax=ax, label="ESRB 1")
+    sns.lineplot(esrb2, ax=ax, label="ESRB 2")
+    sns.lineplot(esrb3, ax=ax, label="ESRB 3")
+    ax.set_xlabel("time[s]")
+    ax.set_ylabel("Band energy ratio")
+    ax.set_title(f"Band energy ratio")
+
+    ax.set_xticks(np.linspace(0, len(esrb1), 10))
+    ax.set_xticklabels([f"{t:.2f}s" for t in np.linspace(0, total_duration, 10)])
+    ax.legend()
+
+def plot_sfm(fig, sr, signal, overlap=0.5, min_frame_dur=0.2):
+    fig.clear()
+    l = frame_length(sr, min_frame_dur)
+    frames = frame_signal(signal, l, overlap)
+    windowed_frames = np.array([window_signal(frame, 'hamming') for frame in frames])
+    spec, freqs = dtft(windowed_frames, sr)
+    spec = np.abs(spec)
+    f0, f1, f2, f3 = 0, 630, 1720, 4400
+    num_freq_bins = spec.shape[1]
+    idx0 = 0
+    idx1 = int(f1 / (sr / 2) * (num_freq_bins - 1))
+    idx2 = int(f2 / (sr / 2) * (num_freq_bins - 1))
+    idx3 = int(f3 / (sr / 2) * (num_freq_bins - 1))
+    band1 = spec[:, idx0:idx1]
+    band2 = spec[:, idx1:idx2]
+    band3 = spec[:, idx2:idx3]
+    sfm1 = [SFM(frame) for frame in band1]
+    sfm2 = [SFM(frame) for frame in band2]
+    sfm3 = [SFM(frame) for frame in band3]
+
+    total_duration = len(signal) / sr
+    sns.set_theme(style="darkgrid")
+
+    ax = fig.add_subplot(111)
+
+    sns.lineplot(sfm1, ax=ax, label="SFM 1")
+    sns.lineplot(sfm2, ax=ax, label="SFM 2")
+    sns.lineplot(sfm3, ax=ax, label="SFM 3")
+    ax.set_xlabel("time[s]")
+    ax.set_ylabel("Spectral flatness measure")
+    ax.set_title(f"Spectral flatness measure")
+
+    ax.set_xticks(np.linspace(0, len(sfm1), 10))
+    ax.set_xticklabels([f"{t:.2f}s" for t in np.linspace(0, total_duration, 10)])
+    ax.legend()
+
+def plot_scf(fig, sr, signal, overlap=0.5, min_frame_dur=0.2):
+    fig.clear()
+    l = frame_length(sr, min_frame_dur)
+    frames = frame_signal(signal, l, overlap)
+    windowed_frames = np.array([window_signal(frame, 'hamming') for frame in frames])
+    spec, freqs = dtft(windowed_frames, sr)
+    spec = np.abs(spec)
+    f0, f1, f2, f3 = 0, 630, 1720, 4400
+    num_freq_bins = spec.shape[1]
+    idx0 = 0
+    idx1 = int(f1 / (sr / 2) * (num_freq_bins - 1))
+    idx2 = int(f2 / (sr / 2) * (num_freq_bins - 1))
+    idx3 = int(f3 / (sr / 2) * (num_freq_bins - 1))
+    band1 = spec[:, idx0:idx1]
+    band2 = spec[:, idx1:idx2]
+    band3 = spec[:, idx2:idx3]
+    scf1 = [SCF(frame) for frame in band1]
+    scf2 = [SCF(frame) for frame in band2]
+    scf3 = [SCF(frame) for frame in band3]
+
+    total_duration = len(signal) / sr
+    sns.set_theme(style="darkgrid")
+
+    ax = fig.add_subplot(111)
+
+    sns.lineplot(scf1, ax=ax, label="SCF 1")
+    sns.lineplot(scf2, ax=ax, label="SCF 2")
+    sns.lineplot(scf3, ax=ax, label="SCF 3")
+    ax.set_xlabel("time[s]")
+    ax.set_ylabel("Spectral crest factor")
+    ax.set_title(f"Spectral crest factor")
+
+    ax.set_xticks(np.linspace(0, len(scf1), 10))
+    ax.set_xticklabels([f"{t:.2f}s" for t in np.linspace(0, total_duration, 10)])
+    ax.legend()
+
+
+
+
+
+
 
 # def plot_f0_from_cepstrum(signal, sr):
 #
@@ -218,6 +401,8 @@ def get_normalized_mono(path):
 
 def frequency_centroid(fft, frequencies):
     den = np.sum(fft)
+    if den == 0:
+        return 0
     to_sum_up = fft * frequencies
     up = sum(to_sum_up)
     return up/den
@@ -229,18 +414,20 @@ def effective_bandwidth(fft, frequencies):
     return up/den
 #function above it will filter fft to desired frequencies
 def ESRB(N, fft, vol):
-    den = N
+    if vol == 0:
+        return 0
+    den = np.sum(np.hamming(N))
     be = np.sum(fft**2)/den
     return be/vol
 def SFM(fft):
     N = len(fft)
     return np.prod(fft**2)**(1/N)*N/np.sum(fft**2)
 
-def SCF(fft, N):
+def SCF(fft):
     N = len(fft)
     return np.max(fft**2)*N/np.sum(fft**2)
 def vol(fft):
-    np.mean(fft**2)
+    return np.mean(fft**2)
 
 
 
