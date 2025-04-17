@@ -21,7 +21,7 @@ class AudioAnalyzerApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Audio Signal Analyzer")
-        self.setGeometry(100, 100, 1200, 800)
+        self.setGeometry(100, 100, 1920, 1080)
 
         self.audio_data = None
         self.selected_region = None  # Will store (start_index, end_index) of selection
