@@ -650,8 +650,9 @@ class AudioAnalyzerApp(QMainWindow):
             freq_ax = self.freq_windowed_figure.add_subplot(111)
 
             # Compute FFT of the windowed signal
+
             yf = np.fft.rfft(windowed_data)
-            xf = np.fft.rfftfreq(n, 1 / self.sample_rate)
+            xf = np.fft.rfftfreq(len(windowed_data), 1 / self.sample_rate)
 
             # Plot magnitude spectrum in dB
             magnitude = np.abs(yf)
@@ -688,14 +689,14 @@ class AudioAnalyzerApp(QMainWindow):
         # Convert slider value (ms) to seconds for the parameter
         self.spec_frame_dur = value / 1000.0
         self.frame_dur_value_label.setText(f"{value} ms")
-        self.update_spectrogram()
+        # self.update_spectrogram()
 
     def on_overlap_changed(self, value):
         """Handle overlap slider change"""
         # Convert slider value (0-99) to decimal (0.0-0.99)
         self.spec_overlap = value / 100.0
         self.overlap_value_label.setText(f"{self.spec_overlap:.2f}")
-        self.update_spectrogram()
+        # self.update_spectrogram()
 
     def on_spectrogram_param_changed(self, window_type):
         """Handle window type change for spectrogram"""
@@ -705,7 +706,7 @@ class AudioAnalyzerApp(QMainWindow):
     def on_max_freq_changed(self, max_freq):
         self.max_spec_freq = max_freq
         self.max_freq_value_label.setText(f"{max_freq}Hz")
-        self.update_spectrogram()
+        # self.update_spectrogram()
 
     def update_spectrogram(self):
         """Update the spectrogram plot"""

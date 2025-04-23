@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import random
 
+from torch.onnx.symbolic_opset9 import baddbmm
+
+
 #pamiętaj chemiku młody zawsze wlewaj listę dlugosci 2^n do tej funkcji
 def FFT(list):
     n = len(list)
@@ -36,8 +39,9 @@ def frame_length(sr, min_frame_dur):
     return l
 
 def dtft(frames, sr):
-    fft = np.fft.rfft(frames, n=len(frames[0]), axis=1)
-    freqs = np.fft.rfftfreq(len(frames[0]), 1 / sr)
+    N = len(frames[0])
+    fft = np.fft.rfft(frames, n=N, axis=1)
+    freqs = np.fft.rfftfreq(N, 1 / sr)
     return fft, freqs
 
 def frame_signal(signal, frame_length, overlap):
@@ -211,6 +215,7 @@ def plot_ef_bandwidth(fig, sr, signal, overlap=0.5, min_frame_dur=0.2):
     spec, freqs = dtft(windowed_frames, sr)
     spec = np.abs(spec)
     bandwidths = [effective_bandwidth(frame, freqs) for frame in spec]
+    ef_v = np.var(bandwidths)**(1/2)
 
     total_duration = len(signal) / sr
     sns.set_theme(style="darkgrid")
@@ -219,8 +224,8 @@ def plot_ef_bandwidth(fig, sr, signal, overlap=0.5, min_frame_dur=0.2):
 
     sns.lineplot(bandwidths, ax=ax)
     ax.set_xlabel("time[s]")
-    ax.set_ylabel("Effective Bandwidth")
-    ax.set_title(f"Effective Bandwidth")
+    ax.set_ylabel(" Bandwidth")
+    ax.set_title(f"Effective Bandwidth: {ef_v}")
 
     ax.set_xticks(np.linspace(0, len(bandwidths), 10))
     ax.set_xticklabels([f"{t:.2f}s" for t in np.linspace(0, total_duration, 10)])
@@ -400,17 +405,19 @@ def get_normalized_mono(path):
     return (sr, signal)
 
 def frequency_centroid(fft, frequencies):
-    den = np.sum(fft)
+    den = np.sum(fft)**2
     if den == 0:
         return 0
     to_sum_up = fft * frequencies
-    up = sum(to_sum_up)
-    return up/den
+    up = sum(to_sum_up**2)
+    return (up/den)**(1/2)
 def effective_bandwidth(fft, frequencies):
     fc = frequency_centroid(fft, frequencies)
     den = np.sum(fft)
-    to_sum_up = (frequencies - fc)**2 * fft**2
-    up = sum(to_sum_up)
+    if den == 0:
+        return 0
+    to_sum_up = (frequencies - fc) * fft
+    up = np.sum(to_sum_up)
     return up/den
 #function above it will filter fft to desired frequencies
 def ESRB(N, fft, vol):
